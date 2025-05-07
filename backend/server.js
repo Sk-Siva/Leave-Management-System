@@ -1,5 +1,7 @@
 const Hapi = require('@hapi/hapi');
 const dotenv = require('dotenv');
+const seedUsers = require('./seeds/userSeeder');
+const seedLeaveBalances = require('./seeds/leaveBalanceSeeder');
 
 const { initializeDatabase } = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
@@ -9,6 +11,8 @@ dotenv.config();
 
 const init = async () => {
   await initializeDatabase();
+  await seedUsers();
+  await seedLeaveBalances();
 
   const server = Hapi.server({
     port: process.env.PORT || 5000,
