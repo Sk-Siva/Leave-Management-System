@@ -1,11 +1,26 @@
-const express = require('express');
-const router = express.Router();
-const { register, login, fetchAllUsers } = require('../controllers/authController.js');
+const { register, login, fetchAllUsers } = require('../controllers/authController');
 const { authMiddleware, roleMiddleware } = require('../middleware/middleware');
 
-// Routes for user management
-router.post('/register', authMiddleware, roleMiddleware('admin'), register);
-router.post('/login', login);
-router.get('/users', authMiddleware, fetchAllUsers);
-
-module.exports = router;
+module.exports = [
+  {
+    method: 'POST',
+    path: '/api/auth/register',
+    options: {
+      pre: [authMiddleware, roleMiddleware('admin')],
+      handler: register
+    }
+  },
+  {
+    method: 'POST',
+    path: '/api/auth/login',
+    handler: login
+  },
+  {
+    method: 'GET',
+    path: '/api/auth/users',
+    options: {
+      pre: [authMiddleware],
+      handler: fetchAllUsers
+    }
+  }
+];

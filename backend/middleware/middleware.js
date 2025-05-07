@@ -1,30 +1,36 @@
 const jwt = require('jsonwebtoken');
+const Boom = require('@hapi/boom');
 
 // Middleware for authentication
-const authMiddleware = (req, res, next) => {
-  const token = req.headers['authorization']?.split(' ')[1];
+const authMiddleware = async (request, h) => {
+  const authHeader = request.headers['authorization'];
 
-  if (!token) {
-    return res.status(403).json({ message: 'Access denied. No token provided.' });
+  if (!authHeader) {
+    throw Boom.forbidden('Access denied. No token provided.');
   }
+
+  const token = authHeader.split(' ')[1];
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (error) {
-    return res.status(401).json({ message: 'Invalid token.' });
+    request.auth = { credentials: decoded };
+    return h.continue;
+  } catch (err) {
+    throw Boom.unauthorized('Invalid token.');
   }
 };
 
-// Middleware for authorization based on user roles
-const roleMiddleware = (requiredRole) => (req, res, next) => {
-  const { role } = req.user;
+// Middleware for authorization based on roles
+const roleMiddleware = (requiredRole) => {
+  return async (request, h) => {
+    const user = request.auth?.credentials;
 
-  if (role !== requiredRole) {
-    return res.status(403).json({ message: 'Access denied. You do not have the access rights to perform this action.' });
-  }
-  next();
+    if (!user || user.role !== requiredRole) {
+      throw Boom.forbidden('Access denied. You do not have the required access rights.');
+    }
+
+    return h.continue;
+  };
 };
 
 module.exports = { authMiddleware, roleMiddleware };

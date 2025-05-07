@@ -1,24 +1,36 @@
-const express = require('express');
+const Hapi = require('@hapi/hapi');
 const dotenv = require('dotenv');
-const cors = require('cors');
 
+const { initializeDatabase } = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
 const leaveRoutes = require('./routes/leaveRoutes');
-const { initializeDatabase } = require('./config/db');
 
 dotenv.config();
 
-const app = express();
-app.use(express.json());
-app.use(cors());
+const init = async () => {
+  await initializeDatabase();
 
-app.use('/api/auth', authRoutes);
-app.use('/api/leave', leaveRoutes);
+  const server = Hapi.server({
+    port: process.env.PORT || 5000,
+    host: 'localhost',
+    routes: {
+      cors: {
+        origin: ['http://localhost:3000'],
+        credentials: true,
+      },
+    },
+  });
 
-const PORT = process.env.PORT || 5000;
+  server.route(authRoutes);
+  server.route(leaveRoutes);
 
-initializeDatabase().then(() => {
-  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-}).catch((err) => {
-  console.error('Failed to initialize database:', err);
+  await server.start();
+  console.log('Server running on ', server.info.uri);
+};
+
+process.on('unhandledRejection', (err) => {
+  console.error(err);
+  process.exit(1);
 });
+
+init();

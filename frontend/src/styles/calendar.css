@@ -48,7 +48,8 @@
 }
 
 .calendar-table-container {
-  overflow-x: auto;
+  max-height:350px;
+  overflow: auto;
   max-width: 100%;
   margin-bottom: 15px;
   border-radius: 6px;
@@ -60,6 +61,12 @@
   border-collapse: collapse;
   font-size: 0.9rem;
   table-layout: fixed;
+}
+
+.calendar-table thead tr {
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 .calendar-table th, .calendar-table td {

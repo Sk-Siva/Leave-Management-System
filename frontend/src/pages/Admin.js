@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 import axios from 'axios';
 import LeavePolicy from '../components/LeavePolicy';
+import Calendar from '../components/Calendar';
 import '../styles/admin.css';
 
-function Admin({ user, logout }) {
+function Admin({ user, logout,teamMembers,fetchTeamLeaveData }) {
   const navigate = useNavigate();
 
   const [adminRequests, setAdminRequests] = useState([]);
@@ -38,7 +39,13 @@ function Admin({ user, logout }) {
   //Fetching the incoming requests for approval
   const fetchAdminRequests = async () => {
     const res = await axios.get(`http://localhost:5000/api/leave/requests/${user.id}`);
-    setAdminRequests(res.data.incomingRequests);
+    console.log("response", res);
+
+    if (!res.data) {
+      setAdminRequests([]);
+    } else {
+      setAdminRequests(res.data.incomingRequests);
+    }
   };
 
   //Fetching all users who are currently on leave today
@@ -164,6 +171,15 @@ function Admin({ user, logout }) {
             </tbody>
           </table>
         </section>
+      )}
+
+      {teamMembers.length > 0 && (
+        <div className='team-calendar'>
+          <Calendar
+            teamMembers={teamMembers}
+            fetchTeamLeaveData={fetchTeamLeaveData}
+          />
+        </div>
       )}
 
       <section className="all-users">

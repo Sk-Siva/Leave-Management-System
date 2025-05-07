@@ -1,6 +1,3 @@
-const express = require('express');
-const router = express.Router();
-
 const {
   fetchUsersOnLeaveToday,
   fetchTeamLeave,
@@ -19,29 +16,120 @@ const {
 
 const { authMiddleware, roleMiddleware } = require('../middleware/middleware');
 
-//Leave Request and History
-router.post('/request', authMiddleware, requestLeaveHandler);
-router.put('/cancel/:leaveRequestId', authMiddleware, cancelLeaveHandler);
-router.get('/history/:userId', authMiddleware, getLeaveHistoryHandler);
+module.exports = [
+  // Leave Request and History
+  {
+    method: 'POST',
+    path: '/api/leave/request',
+    options: {
+      pre: [authMiddleware],
+      handler: requestLeaveHandler
+    }
+  },
+  {
+    method: 'PUT',
+    path: '/api/leave/cancel/{leaveRequestId}',
+    options: {
+      pre: [authMiddleware],
+      handler: cancelLeaveHandler
+    }
+  },
+  {
+    method: 'GET',
+    path: '/api/leave/history/{userId}',
+    options: {
+      pre: [authMiddleware],
+      handler: getLeaveHistoryHandler
+    }
+  },
 
-//Leave Balance
-router.get('/balance/:userId', authMiddleware, fetchLeaveBalance);
+  // Leave Balance
+  {
+    method: 'GET',
+    path: '/api/leave/balance/{userId}',
+    options: {
+      pre: [authMiddleware],
+      handler: fetchLeaveBalance
+    }
+  },
 
-//Leave Requests Approval
-router.get('/requests/:userId', authMiddleware, getIncomingRequestsHandler);
-router.put('/approve/:approveId', authMiddleware, approveLeaveHandler);
-router.put('/reject/:rejectId', authMiddleware, rejectLeaveHandler);
+  // Leave Request Approvals
+  {
+    method: 'GET',
+    path: '/api/leave/requests/{userId}',
+    options: {
+      pre: [authMiddleware],
+      handler: getIncomingRequestsHandler
+    }
+  },
+  {
+    method: 'PUT',
+    path: '/api/leave/approve/{approveId}',
+    options: {
+      pre: [authMiddleware],
+      handler: approveLeaveHandler
+    }
+  },
+  {
+    method: 'PUT',
+    path: '/api/leave/reject/{rejectId}',
+    options: {
+      pre: [authMiddleware],
+      handler: rejectLeaveHandler
+    }
+  },
 
-//Leave Types
-router.get('/types', authMiddleware, fetchLeaveTypes);
-router.post('/types', authMiddleware, roleMiddleware('admin'), createLeaveHandler);
-router.put('/types/:id', authMiddleware, roleMiddleware('admin'), updateLeaveHandler);
-router.delete('/types/:id', authMiddleware, roleMiddleware('admin'), deleteLeaveHandler);
+  // Leave Types
+  {
+    method: 'GET',
+    path: '/api/leave/types',
+    options: {
+      pre: [authMiddleware],
+      handler: fetchLeaveTypes
+    }
+  },
+  {
+    method: 'POST',
+    path: '/api/leave/types',
+    options: {
+      pre: [authMiddleware, roleMiddleware('admin')],
+      handler: createLeaveHandler
+    }
+  },
+  {
+    method: 'PUT',
+    path: '/api/leave/types/{id}',
+    options: {
+      pre: [authMiddleware, roleMiddleware('admin')],
+      handler: updateLeaveHandler
+    }
+  },
+  {
+    method: 'DELETE',
+    path: '/api/leave/types/{id}',
+    options: {
+      pre: [authMiddleware, roleMiddleware('admin')],
+      handler: deleteLeaveHandler
+    }
+  },
 
-// Admin Routes
-router.get('/on-leave-today', authMiddleware,fetchUsersOnLeaveToday);
+  // Admin Route
+  {
+    method: 'GET',
+    path: '/api/leave/on-leave-today',
+    options: {
+      pre: [authMiddleware],
+      handler: fetchUsersOnLeaveToday
+    }
+  },
 
-// Team Leave
-router.get('/team-leaves', authMiddleware, fetchTeamLeave);
-
-module.exports = router;
+  // Team Leave
+  {
+    method: 'GET',
+    path: '/api/leave/team-leaves',
+    options: {
+      pre: [authMiddleware],
+      handler: fetchTeamLeave
+    }
+  }
+];

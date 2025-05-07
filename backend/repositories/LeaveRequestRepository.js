@@ -1,6 +1,10 @@
+const { Brackets } =  require('typeorm');
+
 const { AppDataSource } = require('../config/db');
 const { LeaveRequest, LeaveStatus } = require('../entities/LeaveRequest');
+const { User } = require('../entities/User');
 
+const userRepo = AppDataSource.getRepository(User);
 const leaveRequestRepo = AppDataSource.getRepository(LeaveRequest);
 
 // Get users on leave for the current day
@@ -28,8 +32,8 @@ const getUsersOnLeaveToday = async () => {
 };
 
 // Get team leave requests for a specific month and year
-const getTeamLeave = async (userIds, month, year) => {
-  return await leaveRequestRepo
+const getTeamLeave = async (userIds, month, year, role) => {
+  const query = leaveRequestRepo
     .createQueryBuilder('lr')
     .leftJoin('lr.leaveType', 'lt')
     .select([
@@ -42,11 +46,15 @@ const getTeamLeave = async (userIds, month, year) => {
       'lr.status',
       'lt.name AS leaveTypeName'
     ])
-    .where('lr.user_id IN (:...userIds)', { userIds })
     .andWhere('MONTH(lr.start_date) = :month', { month })
     .andWhere('YEAR(lr.start_date) = :year', { year })
-    .andWhere('lr.status = :status', { status: 'Approved' })
-    .getRawMany();
+    .andWhere('lr.status = :status', { status: 'Approved' });
+
+  if (role !== 'admin') {
+    query.andWhere('lr.user_id IN (:...userIds)', { userIds });
+  }
+
+  return await query.getRawMany();
 };
 
 // Get leave history by user ID
@@ -97,7 +105,11 @@ const updateLeaveRequestStatus = async (id, status) => {
 };
 
 // Get incoming leave requests based on user role
-const getIncomingRequests = async (userId, userRole) => {
+const getIncomingRequests = async (userId) => {
+  const user = await userRepo.findOne({ where: { id: userId } });
+  const userRole = user?.role;
+
+
   let query = leaveRequestRepo.createQueryBuilder('lr')
     .leftJoinAndSelect('lr.user', 'u')
     .leftJoinAndSelect('lr.leaveType', 'lt')
@@ -106,18 +118,22 @@ const getIncomingRequests = async (userId, userRole) => {
   if (userRole === 'admin') {
     query = query
       .leftJoinAndSelect('mgr.manager', 'hr')
-      .where('(lr.status = :pending AND u.role = :hrRole)', { pending: LeaveStatus.PENDING, hrRole: 'hr' })
-      .orWhere('(lr.status = :pendingL2 AND hr.managerId = :userId)', { pendingL2: LeaveStatus.PENDING_L2, userId })
-      .orWhere('(lr.status = :pendingL3 AND hr.managerId = :userId)', { pendingL3: LeaveStatus.PENDING_L3, userId });
+      .where(new Brackets(qb => {
+        qb.where('lr.status = :pending AND u.role = :hrRole', { pending: LeaveStatus.PENDING, hrRole: 'hr' })
+          .orWhere('lr.status = :pendingL2 AND hr.managerId = :userId', { pendingL2: LeaveStatus.PENDING_L2, userId })
+          .orWhere('lr.status = :pendingL3 AND hr.managerId = :userId', { pendingL3: LeaveStatus.PENDING_L3, userId });
+      }));
   } else if (userRole === 'hr') {
-    query = query
-      .where('(lr.status = :pending AND u.managerId = :userId)', { pending: LeaveStatus.PENDING, userId })
-      .orWhere('(lr.status = :pendingL1 AND u.managerId = :userId)', { pendingL1: LeaveStatus.PENDING_L1, userId })
-      .orWhere('(lr.status = :pendingL2 AND mgr.managerId = :userId)', { pendingL2: LeaveStatus.PENDING_L2, userId });
+    query = query.where(new Brackets(qb => {
+      qb.where('lr.status = :pending AND u.managerId = :userId', { pending: LeaveStatus.PENDING, userId })
+        .orWhere('lr.status = :pendingL1 AND u.managerId = :userId', { pendingL1: LeaveStatus.PENDING_L1, userId })
+        .orWhere('lr.status = :pendingL2 AND mgr.managerId = :userId', { pendingL2: LeaveStatus.PENDING_L2, userId });
+    }));
   } else if (userRole === 'manager') {
-    query = query
-      .where('(lr.status = :pending AND u.managerId = :userId)', { pending: LeaveStatus.PENDING, userId })
-      .orWhere('(lr.status = :pendingL1 AND u.managerId = :userId)', { pendingL1: LeaveStatus.PENDING_L1, userId });
+    query = query.where(new Brackets(qb => {
+      qb.where('lr.status = :pending AND u.managerId = :userId', { pending: LeaveStatus.PENDING, userId })
+        .orWhere('lr.status = :pendingL1 AND u.managerId = :userId', { pendingL1: LeaveStatus.PENDING_L1, userId });
+    }));
   }
 
   const results = await query.getMany();
@@ -129,6 +145,7 @@ const getIncomingRequests = async (userId, userRole) => {
     end_date: request.endDate
   }));
 };
+
 
 module.exports = {
   getUsersOnLeaveToday,

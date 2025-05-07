@@ -39,6 +39,9 @@ const Calendar = ({ teamMembers, fetchTeamLeaveData }) => {
           selectedMonth + 1,
           selectedYear
         );
+
+        console.log(data);
+        
         setTeamLeaveData(data || []);
       } catch (error) {
         console.error("Error fetching team leave data:", error);
@@ -183,7 +186,7 @@ const Calendar = ({ teamMembers, fetchTeamLeaveData }) => {
                   {renderCalendarHeader()}
                 </tr>
               </thead>
-              <tbody>
+              <tbody className='t-body'>
                 {renderCalendarBody()}
               </tbody>
             </table>
