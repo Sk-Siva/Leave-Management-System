@@ -1,6 +1,8 @@
 const Hapi = require('@hapi/hapi');
 const dotenv = require('dotenv');
+
 const seedUsers = require('./seeds/userSeeder');
+const seedLeaveTypes = require('./seeds/leaveTypeSeeder');
 const seedLeaveBalances = require('./seeds/leaveBalanceSeeder');
 
 const { initializeDatabase } = require('./config/db');
@@ -12,6 +14,7 @@ dotenv.config();
 const init = async () => {
   await initializeDatabase();
   await seedUsers();
+  await seedLeaveTypes();
   await seedLeaveBalances();
 
   const server = Hapi.server({

@@ -1,4 +1,4 @@
-const { Brackets } =  require('typeorm');
+const { Brackets } = require('typeorm');
 
 const { AppDataSource } = require('../config/db');
 const { LeaveRequest, LeaveStatus } = require('../entities/LeaveRequest');
@@ -118,11 +118,9 @@ const getIncomingRequests = async (userId) => {
   if (userRole === 'admin') {
     query = query
       .leftJoinAndSelect('mgr.manager', 'hr')
-      .where(new Brackets(qb => {
-        qb.where('lr.status = :pending AND u.role = :hrRole', { pending: LeaveStatus.PENDING, hrRole: 'hr' })
-          .orWhere('lr.status = :pendingL2 AND hr.managerId = :userId', { pendingL2: LeaveStatus.PENDING_L2, userId })
-          .orWhere('lr.status = :pendingL3 AND hr.managerId = :userId', { pendingL3: LeaveStatus.PENDING_L3, userId });
-      }));
+      .where('(lr.status = :pending AND u.role = :hrRole)', { pending: LeaveStatus.PENDING, hrRole: 'hr' })
+      .orWhere('(lr.status = :pendingL3 AND hr.managerId = :userId)', { pendingL3: LeaveStatus.PENDING_L3, userId })
+      .orWhere('(lr.status = :pendingL2 AND mgr.managerId = :userId)', { pendingL2: LeaveStatus.PENDING_L2, userId });
   } else if (userRole === 'hr') {
     query = query.where(new Brackets(qb => {
       qb.where('lr.status = :pending AND u.managerId = :userId', { pending: LeaveStatus.PENDING, userId })
