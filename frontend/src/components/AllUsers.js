@@ -1,48 +1,43 @@
 import { useState, useEffect } from 'react';
 import { useUser } from '../utils/userContext';
 import api from "../utils/api";
-import '../styles/loader.css';
+import {Toast} from "./Toast"
 
 function AllUsers() {
     const [usersOnLeaveToday, setUsersOnLeaveToday] = useState([]);
     const [allUsers, setAllUsers] = useState([]);
-    const [loading, setLoading] = useState(true);
     const { user } = useUser();
 
     useEffect(() => {
         if (user) {
-            fetchData();
+            fetchUsersOnLeaveToday();
+            fetchAllUsers();
         }
     }, [user]);
 
-    const fetchData = async () => {
-        try {
-            setLoading(true);
-            const [resUsers, resLeave] = await Promise.all([
-                api.get('/auth/users'),
-                api.get('/leave/on-leave-today')
-            ]);
-
-            setAllUsers(resUsers.data.data.users);
-            setUsersOnLeaveToday(resLeave.data?.users || []);
-        } catch (err) {
-            console.error("Error fetching users:", err);
-        } finally {
-            setLoading(false);
-        }
+    const fetchAllUsers = async () => {
+        const res = await api.get('/auth/users');
+        setAllUsers(res.data.data.users);
     };
 
-    if (loading) {
-        return (
-            <div className="spinner-container">
-                <div className="dot-spinner">
-                    <div className="dot"></div>
-                    <div className="dot"></div>
-                    <div className="dot"></div>
-                </div>
-            </div>
-        );
-    }
+    const fetchUsersOnLeaveToday = async () => {
+        const res = await api.get('/leave/on-leave-today');
+        setUsersOnLeaveToday(res.data?.users || []);
+    };
+
+    const handleDeleteUser = async (userId) => {
+        const confirm = window.confirm("Are you sure you want to delete this user?");
+        if (!confirm) return;
+
+        try {
+            const res = await api.delete(`/auth/users/${userId}`);
+            Toast.success(res.data.message)
+            fetchAllUsers();
+        } catch (error) {
+            console.error("Delete failed:", error);
+            Toast.error("Error deleting user.");
+        }
+    };
 
     return (
         <section className="section-container">
@@ -52,8 +47,9 @@ function AllUsers() {
                     <thead>
                         <tr>
                             <th style={{ width: '10%' }}>ID</th>
-                            <th style={{ width: '60%' }}>Name & Status</th>
+                            <th style={{ width: '40%' }}>Name & Status</th>
                             <th style={{ width: '30%' }}>Role</th>
+                            <th style={{ width: '20%' }}>Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -69,6 +65,14 @@ function AllUsers() {
                                         </button>
                                     </td>
                                     <td>{user.role.name}</td>
+                                    <td>
+                                        <button
+                                            className="delete-btn"
+                                            onClick={() => handleDeleteUser(user.id)}
+                                        >
+                                            Delete
+                                        </button>
+                                    </td>
                                 </tr>
                             );
                         })}

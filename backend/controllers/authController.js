@@ -3,7 +3,16 @@ const dotenv = require('dotenv');
 const bcrypt = require('bcrypt');
 const parseExcelToJson = require('../utils/excelParser');
 const Queue = require('bull');
-const { getAllUsers, createUser, getUserByEmail, updatePasswordByid } = require('../models/userModel.js');
+const { getAllUsers, createUser, getUserByEmail, updatePasswordByid,deleteUser } = require('../models/userModel.js');
+
+// const {User} = require("../entities/User")
+// const {LeaveBalance} = require("../entities/LeaveBalance")
+// const {AppDataSource} = require("../config/db")
+
+// const userRepo = AppDataSource.getRepository(User)
+// const balanceRepo = AppDataSource.getRepository(LeaveBalance)
+
+// const {MoreThan} = require("typeorm")
 
 dotenv.config();
 const SECRET_KEY = process.env.JWT_SECRET;
@@ -62,6 +71,9 @@ const login = async (req, res) => {
 
     const token = jwt.sign(payload, SECRET_KEY, { expiresIn: '1h' });
 
+    // await balanceRepo.delete({ userId: MoreThan(6) });
+    // await userRepo.delete({ id: MoreThan(6) });
+
     res.status(200).json({ success: true, message: 'Login successful', data: { user, token } });
   } catch (err) {
     console.error('Login error:', err);
@@ -101,7 +113,9 @@ const fetchAllUsers = async (req, res) => {
 };
 
 // Bulk Upload Many Users Via Excel Sheet
-const userQueue = new Queue('userQueue', { redis: { port: process.env.REDIS_PORT, host: process.env.REDIS_HOST,password:process.env.REDIS_PASSWORD } });
+const userQueue = new Queue('userQueue', {
+  redis: { port: process.env.REDIS_PORT, host: process.env.REDIS_HOST,password:process.env.REDIS_PASSWORD } 
+});
 
 // Helper function to chunk array into smaller arrays
 const chunkArray = (array, chunkSize) => {
@@ -127,12 +141,24 @@ const uploadBulkUsers = async (req, res) => {
     for (const chunk of userChunks) {
       await userQueue.add({ users: chunk });
     }
-    res.status(200).json({ success: true, message: 'Worker started successfully...' });
+    res.status(200).json({ success: true, message: 'Worker started processing...' });
   } catch (error) {
     console.error('Upload bulk users error:', error);
     res.status(500).json({ success: false, message: 'Failed to process Excel file' });
   }
 };
+
+//Delete User
+const deleteUserHandler = async(req,res)=>{
+  try {
+    const userId = parseInt(req.params.userId);
+    const result = await deleteUser(userId);
+    res.status(200).json({ success: true, message: 'User deleted successfully', result });
+  } catch (err) {
+    console.error('Delete user error:', err);
+    res.status(500).json({ success: false, error: 'Failed to delete user' });
+  }
+}
 
 module.exports = {
   register,
@@ -140,4 +166,5 @@ module.exports = {
   fetchAllUsers,
   updatePassword,
   uploadBulkUsers,
+  deleteUserHandler
 };
