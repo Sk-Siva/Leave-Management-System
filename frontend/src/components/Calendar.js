@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useUser } from '../utils/userContext';
-import {Toast} from "./Toast"
+import { Toast } from "./Toast";
 import api from "../utils/api";
 import '../styles/calendar.css';
+import '../styles/loader.css';
 
-function Calendar () {
+function Calendar() {
   const { user } = useUser();
   const [teamMembers, setTeamMembers] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [teamLeaveData, setTeamLeaveData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [teamLoading, setTeamLoading] = useState(true);
+  const [leaveDataLoading, setLeaveDataLoading] = useState(true);
 
   const leaveTypeColors = {
     'Casual Leave': '#4CAF50',
@@ -32,21 +34,25 @@ function Calendar () {
     return new Date(year, month + 1, 0).getDate();
   };
 
+  const parseLocalDate = (dateStr) => {
+    const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
   const fetchAllUsersinTeam = async () => {
     try {
       const res = await api.get('/auth/users');
-      
       const currentManagerId = user.id;
-      let teamMembers;
-      if (user.role.name !== 'admin') {
-        teamMembers = res.data.data.users.filter(u => u.managerId === currentManagerId);
-      } else {
-        teamMembers = res.data.data.users;
-      }
-      setTeamMembers(teamMembers);
+      let members = user.role.name !== 'admin'
+        ? res.data.data.users.filter(u => u.managerId === currentManagerId)
+        : res.data.data.users;
+
+      setTeamMembers(members);
     } catch (error) {
-      console.error("Error fetching users:", error);
-      Toast.error("Error fetching users")
+      Toast.error("Error fetching users");
+      setTeamMembers([]);
+    } finally {
+      setTeamLoading(false);
     }
   };
 
@@ -62,14 +68,14 @@ function Calendar () {
       });
       return response.data.leaveRequests;
     } catch (error) {
-      console.error("Error fetching team leave data:", error);
-      Toast.error("Error fetching team leave data")
+      Toast.error("Error fetching team leave data");
       return [];
     }
   };
 
   useEffect(() => {
     const loadData = async () => {
+      setTeamLoading(true);
       await fetchAllUsersinTeam();
     };
     loadData();
@@ -77,12 +83,11 @@ function Calendar () {
 
   useEffect(() => {
     const loadTeamLeaveData = async () => {
-      if (!teamMembers || teamMembers.length === 0) {
-        setLoading(false);
+      if (teamMembers.length === 0) {
+        setLeaveDataLoading(false);
         return;
       }
-
-      setLoading(true);
+      setLeaveDataLoading(true);
       try {
         const data = await fetchTeamLeaveData(
           teamMembers.map(member => member.id),
@@ -90,11 +95,8 @@ function Calendar () {
           selectedYear
         );
         setTeamLeaveData(data || []);
-      } catch (error) {
-        console.error("Error fetching team leave data:", error);
-        Toast.error("Error fetching team leave data")
       } finally {
-        setLoading(false);
+        setLeaveDataLoading(false);
       }
     };
 
@@ -117,8 +119,6 @@ function Calendar () {
   };
 
   const renderCalendarBody = () => {
-    if (!teamMembers || teamMembers.length === 0) return null;
-
     return teamMembers.map(member => {
       const daysInMonth = getDaysInMonth(selectedMonth, selectedYear);
       const memberLeaves = teamLeaveData.filter(leave => leave.lr_user_id === member.id);
@@ -130,8 +130,8 @@ function Calendar () {
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
         const leaveOnThisDay = memberLeaves.find(leave => {
-          const startDate = new Date(leave.lr_start_date);
-          const endDate = new Date(leave.lr_end_date);
+          const startDate = parseLocalDate(leave.lr_start_date);
+          const endDate = parseLocalDate(leave.lr_end_date);
           return currentDate >= startDate && currentDate <= endDate && !isWeekend;
         });
 
@@ -199,8 +199,14 @@ function Calendar () {
         </div>
       </div>
 
-      {loading ? (
-        <p className="loading-message">Loading calendar data...</p>
+      {(teamLoading || leaveDataLoading) ? (
+        <div className="spinner-container">
+          <div className="dot-spinner">
+            <div className="dot"></div>
+            <div className="dot"></div>
+            <div className="dot"></div>
+          </div>
+        </div>
       ) : (
         <>
           <div className="calendar-table-container">
@@ -221,6 +227,6 @@ function Calendar () {
       )}
     </div>
   );
-};
+}
 
 export default Calendar;

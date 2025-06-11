@@ -101,7 +101,7 @@ const fetchAllUsers = async (req, res) => {
 };
 
 // Bulk Upload Many Users Via Excel Sheet
-const userQueue = new Queue('userQueue', { redis: { port: 6379, host: '127.0.0.1' } });
+const userQueue = new Queue('userQueue', { redis: { port: process.env.REDIS_PORT, host: process.env.REDIS_HOST,password:process.env.REDIS_PASSWORD } });
 
 // Helper function to chunk array into smaller arrays
 const chunkArray = (array, chunkSize) => {
@@ -127,7 +127,7 @@ const uploadBulkUsers = async (req, res) => {
     for (const chunk of userChunks) {
       await userQueue.add({ users: chunk });
     }
-    res.status(200).json({ success: true, message: 'Users added successfully' });
+    res.status(200).json({ success: true, message: 'Worker started successfully...' });
   } catch (error) {
     console.error('Upload bulk users error:', error);
     res.status(500).json({ success: false, message: 'Failed to process Excel file' });
